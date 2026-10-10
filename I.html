@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0a1f;
+    --panel: rgba(255, 255, 255, 0.07);
+    --line: rgba(255, 255, 255, 0.14);
+    --text: #f3f1ff;
+    --muted: #a9a3c9;
+    --accent: #ff5d8f;
+    --accent-2: #5b7cff;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    min-height: 100vh;
+    font-family: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(900px 500px at 15% -10%, #3b1d7a 0%, transparent 60%),
+      radial-gradient(800px 500px at 100% 10%, #7a1d4f 0%, transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    padding: 0 1rem 4rem;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { text-align: center; padding: 4rem 0 2rem; }
+  h1 { font-size: clamp(2rem, 6vw, 3.4rem); letter-spacing: -0.03em; line-height: 1.1; }
+  header p { color: var(--muted); margin-top: 0.8rem; }
+
+  .search {
+    display: flex; gap: 0.5rem; align-items: center;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; padding: 0.4rem 0.4rem 0.4rem 1.2rem;
+    backdrop-filter: blur(10px);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255, 93, 143, 0.18); }
+  .search input {
+    flex: 1; min-width: 0; background: none; border: 0; outline: 0;
+    color: var(--text); font: inherit; font-size: 1rem; padding: 0.6rem 0;
+  }
+  .search input::placeholder { color: var(--muted); }
+  button { font: inherit; cursor: pointer; border: 0; color: inherit; transition: transform .15s, background .2s, opacity .2s; }
+  button:active { transform: scale(0.97); }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+  .clear { background: none; font-size: 1.3rem; color: var(--muted); padding: 0 0.6rem; display: none; }
+  .clear:hover { color: var(--text); }
+  .go {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    padding: 0.7rem 1.6rem; border-radius: 999px; font-weight: 600;
+  }
+  .go:hover { opacity: 0.9; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; justify-content: space-between; margin-top: 1rem; }
+  .google {
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 0.65rem 1.2rem; border-radius: 999px; font-weight: 600;
+  }
+  .google:hover { background: rgba(255, 255, 255, 0.14); transform: translateY(-2px); }
+  .opt { color: var(--muted); font-size: 0.9rem; display: flex; gap: 0.5rem; align-items: center; cursor: pointer; }
+  .opt input { accent-color: var(--accent); width: 1rem; height: 1rem; }
+
+  .history { margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .history:empty { display: none; }
+  .chip {
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 0.35rem 0.9rem; border-radius: 999px; font-size: 0.85rem; color: var(--muted);
+  }
+  .chip:hover { color: var(--text); border-color: var(--accent); }
+  .history .wipe { background: none; font-size: 0.85rem; color: var(--muted); text-decoration: underline; }
+
+  .status { margin: 2.2rem 0 1rem; color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: transform .2s, border-color .2s;
+  }
+  .card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.35); }
+  .card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #1a1535; }
+  .card .meta { padding: 0.8rem; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
+  .card .title { font-size: 0.85rem; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .card .by { font-size: 0.75rem; color: var(--muted); }
+  .card a {
+    margin-top: auto; text-align: center; text-decoration: none; color: var(--text);
+    background: rgba(255, 255, 255, 0.1); padding: 0.5rem; border-radius: 10px; font-size: 0.85rem;
+  }
+  .card a:hover { background: var(--accent-2); }
+
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); border: 1px dashed var(--line); border-radius: 20px; }
+  .empty strong { display: block; color: var(--text); font-size: 1.1rem; margin-bottom: 0.4rem; }
+  .loader { width: 38px; height: 38px; margin: 3rem auto; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .more { display: block; margin: 2rem auto 0; background: var(--panel); border: 1px solid var(--line); padding: 0.7rem 1.6rem; border-radius: 999px; }
+  .more:hover { background: rgba(255, 255, 255, 0.14); }
+  footer { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 3rem; }
+
+  @media (max-width: 520px) {
+    .go { padding: 0.7rem 1.1rem; }
+    .actions { flex-direction: column; align-items: stretch; }
+    .google { text-align: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: 2s !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Find any image</h1>
+    <p>Type a keyword to open Google Images, with a free preview grid right here.</p>
+  </header>
+
+  <div class="search" role="search">
+    <input id="q" type="search" placeholder="Try: mountains, vintage cars, anime wallpaper" autocomplete="off" aria-label="Search images">
+    <button class="clear" id="clear" title="Clear search" aria-label="Clear search">&times;</button>
+    <button class="go" id="search">Search</button>
+  </div>
+
+  <div class="actions">
+    <button class="google" id="google">Search on Google Images</button>
+    <label class="opt"><input type="checkbox" id="autoOpen" checked> Also open Google Images when I press Search</label>
+  </div>
+
+  <div class="history" id="history" aria-label="Recent searches"></div>
+
+  <div class="status" id="status" aria-live="polite"></div>
+  <main id="results"></main>
+
+  <footer>Preview images come from Openverse (openly licensed). They are not Google results.</footer>
+</div>
+
+<script>
+  const input = document.getElementById("q");
+  const clearBtn = document.getElementById("clear");
+  const results = document.getElementById("results");
+  const statusEl = document.getElementById("status");
+  const historyEl = document.getElementById("history");
+  const autoOpen = document.getElementById("autoOpen");
+
+  const HISTORY_KEY = "imageFinderHistory";
+  const PAGE_SIZE = 24;
+  let currentQuery = "";
+  let currentPage = 1;
+
+  // ---------- Google Images ----------
+  function openGoogle(query) {
+    const url = "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(query);
+    window.open(url, "_blank", "noopener");
+  }
+
+  // ---------- Search history (saved in this browser) ----------
+  function getHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+    catch { return []; }
+  }
+  function saveHistory(query) {
+    const list = getHistory().filter(item => item.toLowerCase() !== query.toLowerCase());
+    list.unshift(query);
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 8))); } catch {}
+    renderHistory();
+  }
+  function renderHistory() {
+    historyEl.innerHTML = "";
+    const list = getHistory();
+    if (!list.length) return;
+    list.forEach(term => {
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.textContent = term;
+      chip.onclick = () => { input.value = term; toggleClear(); runSearch(); };
+      historyEl.appendChild(chip);
+    });
+    const wipe = document.createElement("button");
+    wipe.className = "wipe";
+    wipe.textContent = "Clear history";
+    wipe.onclick = () => { try { localStorage.removeItem(HISTORY_KEY); } catch {} renderHistory(); };
+    historyEl.appendChild(wipe);
+  }
+
+  // ---------- Preview grid (Openverse API, no key needed) ----------
+  function showEmpty(title, text) {
+    results.innerHTML = "";
+    const box = document.createElement("div");
+    box.className = "empty";
+    box.innerHTML = "<strong></strong><span></span>";
+    box.querySelector("strong").textContent = title;
+    box.querySelector("span").textContent = text;
+    results.appendChild(box);
+  }
+
+  async function loadPreviews(query, page) {
+    const url = "https://api.openverse.org/v1/images/?q=" + encodeURIComponent(query) +
+                "&page_size=" + PAGE_SIZE + "&page=" + page;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("The preview service returned an error (" + res.status + ").");
+    return res.json();
+  }
+
+  function addCards(items) {
+    let grid = results.querySelector(".grid");
+    if (!grid) {
+      results.innerHTML = "";
+      grid = document.createElement("div");
+      grid.className = "grid";
+      results.appendChild(grid);
+    }
+    items.forEach(item => {
+      const card = document.createElement("article");
+      card.className = "card";
+
+      const img = document.createElement("img");
+      img.src = item.thumbnail || item.url;
+      img.alt = item.title || currentQuery;
+      img.loading = "lazy";
+      img.onerror = () => card.remove();
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const title = document.createElement("div");
+      title.className = "title";
+      title.textContent = item.title || "Untitled";
+      const by = document.createElement("div");
+      by.className = "by";
+      by.textContent = item.creator ? "by " + item.creator : "";
+      const link = document.createElement("a");
+      link.href = item.foreign_landing_url || item.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Open original source";
+
+      meta.append(title, by, link);
+      card.append(img, meta);
+      grid.appendChild(card);
+    });
+  }
+
+  function removeMoreButton() {
+    const old = document.getElementById("more");
+    if (old) old.remove();
+  }
+
+  async function runSearch() {
+    const query = input.value.trim();
+    if (!query) {
+      statusEl.textContent = "";
+      showEmpty("Nothing to search yet", "Type a keyword above, like \"wallpapers\" or \"animals\".");
+      input.focus();
+      return;
+    }
+    currentQuery = query;
+    currentPage = 1;
+    saveHistory(query);
+    if (autoOpen.checked) openGoogle(query);
+
+    removeMoreButton();
+    results.innerHTML = '<div class="loader" role="status" aria-label="Loading"></div>';
+    statusEl.textContent = 'Loading previews for "' + query + '"...';
+
+    try {
+      const data = await loadPreviews(query, 1);
+      if (!data.results.length) {
+        statusEl.textContent = "";
+        showEmpty("No previews found", "Try a different keyword, or use the Google Images button for more results.");
+        return;
+      }
+      results.innerHTML = "";
+      addCards(data.results);
+      statusEl.textContent = "Showing previews for \"" + query + "\" from Openverse.";
+      if (data.page_count > 1) addMoreButton();
+    } catch (err) {
+      statusEl.textContent = "";
+      showEmpty("Couldn't load previews", err.message + " You can still use the Google Images button.");
+    }
+  }
+
+  function addMoreButton() {
+    const btn = document.createElement("button");
+    btn.id = "more";
+    btn.className = "more";
+    btn.textContent = "Load more";
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = "Loading...";
+      try {
+        const data = await loadPreviews(currentQuery, ++currentPage);
+        addCards(data.results);
+        if (currentPage >= data.page_count) btn.remove();
+        else { btn.disabled = false; btn.textContent = "Load more"; }
+      } catch {
+        btn.disabled = false;
+        btn.textContent = "Try again";
+        currentPage--;
+      }
+    };
+    results.appendChild(btn);
+  }
+
+  // ---------- Events ----------
+  function toggleClear() { clearBtn.style.display = input.value ? "block" : "none"; }
+
+  document.getElementById("search").onclick = runSearch;
+  document.getElementById("google").onclick = () => {
+    const query = input.value.trim();
+    if (!query) { input.focus(); statusEl.textContent = "Type a keyword first."; return; }
+    saveHistory(query);
+    openGoogle(query);
+  };
+  input.addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
+  input.addEventListener("input", toggleClear);
+  clearBtn.onclick = () => {
+    input.value = "";
+    toggleClear();
+    statusEl.textContent = "";
+    showEmpty("Start with a keyword", "Search for nature, cars, anime, wallpapers or animals.");
+    input.focus();
+  };
+
+  renderHistory();
+  showEmpty("Start with a keyword", "Search for nature, cars, anime, wallpapers or animals.");
+</script>
+</body>
+</html>
